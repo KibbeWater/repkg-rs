@@ -8,6 +8,10 @@ description = "WebAssembly bindings for repkg - Wallpaper Engine PKG/TEX convert
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+console-log = []
+
 [dependencies]
 repkg = { path = "../repkg" }
 repkg-core = { path = "../repkg-core" }

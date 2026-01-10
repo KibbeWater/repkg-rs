@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TexInfo, WasmModule } from '../wasm';
 import { downloadFile, getMimeType } from '../download';
+import { logConversion } from '../logger';
 
 interface TexViewerProps {
   fileName: string;
@@ -58,11 +59,13 @@ export function TexViewer({
 
   const handleDownload = useCallback(async () => {
     setIsConverting(true);
+    const startTime = performance.now();
 
     try {
       onProgress('Converting...', 30);
 
       const data = wasm.convert_tex(bytes, outputFormat);
+      logConversion(outputFormat, bytes.length, data.length, startTime);
 
       onProgress('Downloading...', 80);
 

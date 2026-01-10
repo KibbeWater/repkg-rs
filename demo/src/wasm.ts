@@ -1,3 +1,5 @@
+import { logBanner, logWasmInit, handleWasmLog } from './logger';
+
 // Types for WASM module
 export interface PkgEntryInfo {
   path: string;
@@ -58,6 +60,11 @@ export async function loadWasm(
   }
 
   loadingPromise = (async () => {
+    const startTime = performance.now();
+    
+    logBanner();
+    console.log('%c[WASM] %cLoading module...', 'color: #9ca3af;', 'color: #60a5fa;');
+    
     onProgress?.('Loading WebAssembly module...', 10);
 
     // Dynamic import of the WASM package
@@ -67,6 +74,14 @@ export async function loadWasm(
     
     // Initialize the WASM module
     await wasm.default();
+    
+    // Register log callback if available (requires console-log feature)
+    if (typeof wasm.set_log_callback === 'function') {
+      wasm.set_log_callback(handleWasmLog);
+      console.log('%c[WASM] %cLog callback registered', 'color: #9ca3af;', 'color: #10b981;');
+    }
+    
+    logWasmInit(startTime);
     
     onProgress?.('Ready!', 100);
 

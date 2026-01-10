@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:wasm": "cd ../crates/repkg-wasm && wasm-pack build --target web --release --features console-log && cp -r pkg/* ../../demo/pkg/",
     "preview": "vite preview"
   },
   "dependencies": {

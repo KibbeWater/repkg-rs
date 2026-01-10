@@ -10,6 +10,12 @@ use serde::Serialize;
 use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 
+#[macro_use]
+pub mod log;
+
+#[cfg(feature = "console-log")]
+pub use log::{clear_log_callback, set_log_callback};
+
 /// Initialize panic hook for better error messages in browser console.
 #[wasm_bindgen(start)]
 pub fn init() {
@@ -57,6 +63,56 @@ pub struct TexInfo {
 }
 
 // ============================================================================
+// Log Data Structures (only used when console-log feature is enabled)
+// ============================================================================
+
+#[cfg(feature = "console-log")]
+#[derive(Serialize)]
+struct PkgParseLog {
+    magic: String,
+    version: String,
+    header_size_bytes: u32,
+    entry_count: usize,
+    total_data_bytes: u64,
+    texture_count: usize,
+    json_count: usize,
+    shader_count: usize,
+    other_count: usize,
+}
+
+#[cfg(feature = "console-log")]
+#[derive(Serialize)]
+struct TexParseLog {
+    container_version: String,
+    format: String,
+    flags: u32,
+    dimensions: String,
+    texture_dimensions: String,
+    image_format: String,
+    is_lz4_compressed: bool,
+    mipmap_count: usize,
+    total_mipmap_bytes: usize,
+}
+
+#[cfg(feature = "console-log")]
+#[derive(Serialize)]
+struct TexConvertLog {
+    input_format: String,
+    output_format: String,
+    dimensions: String,
+    input_bytes: usize,
+    output_bytes: usize,
+    compression_ratio: f32,
+}
+
+#[cfg(feature = "console-log")]
+#[derive(Serialize)]
+struct ExtractLog {
+    entry_count: usize,
+    total_bytes: usize,
+}
+
+// ============================================================================
 // PKG Functions
 // ============================================================================
 
@@ -67,6 +123,28 @@ pub fn parse_pkg(bytes: &[u8]) -> Result<JsValue, JsError> {
     let package = reader
         .read_from(&mut Cursor::new(bytes))
         .map_err(|e| JsError::new(&e.to_string()))?;
+
+    // Log parsing details
+    #[cfg(feature = "console-log")]
+    {
+        let texture_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Tex)).count();
+        let json_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Json)).count();
+        let shader_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Shader)).count();
+        let other_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Other)).count();
+        let total_data: u64 = package.entries.iter().map(|e| e.length as u64).sum();
+
+        wasm_info!("pkg_parse", &PkgParseLog {
+            magic: package.magic.clone(),
+            version: package.magic.chars().skip(4).collect(),
+            header_size_bytes: package.header_size,
+            entry_count: package.entries.len(),
+            total_data_bytes: total_data,
+            texture_count,
+            json_count,
+            shader_count,
+            other_count,
+        });
+    }
 
     let info = pkg_to_info(&package);
     serde_wasm_bindgen::to_value(&info).map_err(|e| JsError::new(&e.to_string()))
@@ -136,6 +214,16 @@ pub fn extract_selected_pkg(bytes: &[u8], paths: Vec<String>) -> Result<JsValue,
         })
         .collect();
 
+    // Log extraction details
+    #[cfg(feature = "console-log")]
+    {
+        let total_bytes: usize = files.iter().map(|f| f.data.len()).sum();
+        wasm_info!("pkg_extract", &ExtractLog {
+            entry_count: files.len(),
+            total_bytes,
+        });
+    }
+
     serde_wasm_bindgen::to_value(&files).map_err(|e| JsError::new(&e.to_string()))
 }
 
@@ -151,6 +239,31 @@ pub fn parse_tex(bytes: &[u8]) -> Result<JsValue, JsError> {
         .read_from(&mut Cursor::new(bytes))
         .map_err(|e| JsError::new(&e.to_string()))?;
 
+    // Log parsing details
+    #[cfg(feature = "console-log")]
+    {
+        let mipmap_count = tex.first_image().map(|i| i.mipmap_count()).unwrap_or(0);
+        let total_mipmap_bytes: usize = tex.first_image()
+            .map(|img| img.mipmaps.iter().map(|m| m.bytes.len()).sum())
+            .unwrap_or(0);
+        let is_lz4 = tex.first_image()
+            .and_then(|img| img.mipmaps.first())
+            .map(|m| m.is_lz4_compressed)
+            .unwrap_or(false);
+
+        wasm_info!("tex_parse", &TexParseLog {
+            container_version: format!("{:?}", tex.images_container.version),
+            format: format!("{:?}", tex.header.format),
+            flags: tex.header.flags.bits(),
+            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+            texture_dimensions: format!("{}x{}", tex.header.texture_width, tex.header.texture_height),
+            image_format: format!("{:?}", tex.images_container.image_format),
+            is_lz4_compressed: is_lz4,
+            mipmap_count,
+            total_mipmap_bytes,
+        });
+    }
+
     let info = tex_to_info(&tex);
     serde_wasm_bindgen::to_value(&info).map_err(|e| JsError::new(&e.to_string()))
 }
@@ -159,6 +272,9 @@ pub fn parse_tex(bytes: &[u8]) -> Result<JsValue, JsError> {
 /// Supported formats: "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tga"
 #[wasm_bindgen]
 pub fn convert_tex(bytes: &[u8], format: &str) -> Result<Vec<u8>, JsError> {
+    #[cfg(feature = "console-log")]
+    let input_len = bytes.len();
+
     let reader = TexReader::new();
     let tex = reader
         .read_from(&mut Cursor::new(bytes))
@@ -172,12 +288,29 @@ pub fn convert_tex(bytes: &[u8], format: &str) -> Result<Vec<u8>, JsError> {
         .convert(&tex, output_format)
         .map_err(|e| JsError::new(&e.to_string()))?;
 
+    // Log conversion details
+    #[cfg(feature = "console-log")]
+    {
+        let output_len = result.bytes.len();
+        wasm_info!("tex_convert", &TexConvertLog {
+            input_format: format!("{:?}", tex.header.format),
+            output_format: format.to_uppercase(),
+            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+            input_bytes: input_len,
+            output_bytes: output_len,
+            compression_ratio: if input_len > 0 { output_len as f32 / input_len as f32 } else { 0.0 },
+        });
+    }
+
     Ok(result.bytes)
 }
 
 /// Convert a TEX file to its recommended format (PNG for images, GIF for animations, MP4 for video).
 #[wasm_bindgen]
 pub fn convert_tex_auto(bytes: &[u8]) -> Result<ConvertResult, JsError> {
+    #[cfg(feature = "console-log")]
+    let input_len = bytes.len();
+
     let reader = TexReader::new();
     let tex = reader
         .read_from(&mut Cursor::new(bytes))
@@ -189,6 +322,20 @@ pub fn convert_tex_auto(bytes: &[u8]) -> Result<ConvertResult, JsError> {
     let result = converter
         .convert(&tex, format)
         .map_err(|e| JsError::new(&e.to_string()))?;
+
+    // Log conversion details
+    #[cfg(feature = "console-log")]
+    {
+        let output_len = result.bytes.len();
+        wasm_info!("tex_convert_auto", &TexConvertLog {
+            input_format: format!("{:?}", tex.header.format),
+            output_format: result.format.extension().to_uppercase(),
+            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+            input_bytes: input_len,
+            output_bytes: output_len,
+            compression_ratio: if input_len > 0 { output_len as f32 / input_len as f32 } else { 0.0 },
+        });
+    }
 
     Ok(ConvertResult {
         data: result.bytes,

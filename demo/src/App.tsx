@@ -5,6 +5,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { PkgViewer } from './components/PkgViewer';
 import { TexViewer } from './components/TexViewer';
 import { ErrorToast } from './components/ErrorToast';
+import { logFileLoad, logPkgParse, logTexParse } from './logger';
 
 type FileType = 'pkg' | 'tex' | null;
 
@@ -50,11 +51,15 @@ export default function App() {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
 
+      // Log file info
+      logFileLoad(file.name, bytes.length);
+
       // Parse file
       setProgress({ message: 'Parsing file...', percent: 50 });
 
       if (fileType === 'pkg') {
         const pkgInfo = wasmModule.parse_pkg(bytes);
+        logPkgParse(pkgInfo.magic, pkgInfo.entry_count, pkgInfo.entries);
         setProgress({ message: 'Done!', percent: 100 });
         setLoadedFile({
           name: file.name,
@@ -64,6 +69,7 @@ export default function App() {
         });
       } else {
         const texInfo = wasmModule.parse_tex(bytes);
+        logTexParse(texInfo);
         setProgress({ message: 'Done!', percent: 100 });
         setLoadedFile({
           name: file.name,

@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { PkgInfo, WasmModule } from '../wasm';
 import { downloadAsZip, formatFileSize } from '../download';
+import { logExtraction, logConversion } from '../logger';
 
 interface PkgViewerProps {
   fileName: string;
@@ -68,12 +69,15 @@ export function PkgViewer({
     }
 
     setIsExtracting(true);
+    const extractStartTime = performance.now();
 
     try {
       onProgress('Extracting files...', 0);
 
       const paths = Array.from(selectedPaths);
       const extracted = wasm.extract_selected_pkg(bytes, paths);
+      
+      logExtraction(extracted.length, extractStartTime);
 
       onProgress('Converting textures...', 30);
 
@@ -87,7 +91,10 @@ export function PkgViewer({
         // Convert .tex files
         if (path.toLowerCase().endsWith('.tex')) {
           try {
+            const convStartTime = performance.now();
+            const inputSize = data.length;
             data = wasm.convert_tex(data, outputFormat);
+            logConversion(outputFormat, inputSize, data.length, convStartTime);
             path = path.replace(/\.tex$/i, `.${outputFormat}`);
           } catch (err) {
             console.warn(`Failed to convert ${file.path}:`, err);

@@ -37,7 +37,7 @@ jobs:
       - name: Build WASM
         run: |
           cd crates/repkg-wasm
-          wasm-pack build --target web --release
+          wasm-pack build --target web --release --features console-log
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
