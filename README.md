@@ -1,8 +1,12 @@
 # repkg-rs
 
+[![Try it online](https://img.shields.io/badge/demo-Try%20it%20online-blue)](https://kibbewater.github.io/repkg-rs/)
+
 A Rust implementation for extracting and converting Wallpaper Engine PKG packages and TEX textures.
 
 This is a cross-platform rewrite of [notscuffed/repkg](https://github.com/notscuffed/repkg), providing the same functionality with native support for Linux, macOS, and Windows.
+
+**[Try the web demo](https://kibbewater.github.io/repkg-rs/)** - Convert files directly in your browser, no installation required!
 
 ## Features
 
@@ -192,9 +196,9 @@ repkg-rs/
 ├── crates/
 │   ├── repkg-core/     # Core data types and structures
 │   ├── repkg/          # Library for reading PKG/TEX files
-│   └── repkg-cli/      # Command-line interface
-├── tests/
-│   └── fixtures/       # Test files
+│   ├── repkg-cli/      # Command-line interface
+│   └── repkg-wasm/     # WebAssembly bindings for browser
+├── demo/               # Web demo (React + Vite + Tailwind)
 └── Cargo.toml          # Workspace configuration
 ```
 

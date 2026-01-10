@@ -4,6 +4,7 @@ members = [
     "crates/repkg-core",
     "crates/repkg",
     "crates/repkg-cli",
+    "crates/repkg-wasm",
 ]
 
 [workspace.package]
@@ -19,3 +20,8 @@ description = "Wallpaper Engine PKG unpacker and TEX converter"
 thiserror = "1.0"
 bitflags = "2.4"
 byteorder = "1.5"
+
+# Optimize WASM for size in release builds
+[profile.release]
+opt-level = "s"
+lto = true
