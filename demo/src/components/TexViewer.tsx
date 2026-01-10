@@ -38,7 +38,7 @@ export function TexViewer({
         const result = wasm.convert_tex_auto(bytes);
         if (cancelled) return;
 
-        const blob = new Blob([result.data], { type: result.mime_type });
+        const blob = new Blob([new Uint8Array(result.data)], { type: result.mime_type });
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
       } catch (err) {

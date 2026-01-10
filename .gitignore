@@ -18,6 +18,8 @@ crates/repkg/tests/fixtures/*.tex
 # Demo build artifacts
 demo/node_modules/
 demo/pkg/
+demo/dist/
+demo/tsconfig.tsbuildinfo
 
 # WASM build artifacts
 crates/repkg-wasm/pkg/

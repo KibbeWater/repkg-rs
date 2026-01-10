@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { PkgInfo, WasmModule } from '../wasm';
-import { downloadAsZip, formatFileSize, getMimeType } from '../download';
+import { downloadAsZip, formatFileSize } from '../download';
 
 interface PkgViewerProps {
   fileName: string;

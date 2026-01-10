@@ -37,7 +37,7 @@ export function downloadFile(
   filename: string,
   mimeType: string
 ): void {
-  const blob = new Blob([data], { type: mimeType });
+  const blob = new Blob([new Uint8Array(data)], { type: mimeType });
   saveAs(blob, filename);
 }
 
