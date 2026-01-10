@@ -1,0 +1,16 @@
+# Build artifacts
+/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test fixtures (large binary files)
+crates/repkg/tests/fixtures/*.pkg
+crates/repkg/tests/fixtures/*.tex

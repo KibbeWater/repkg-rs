@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/repkg-core",
+    "crates/repkg",
+    "crates/repkg-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/user/repkg-rs"
+rust-version = "1.70"
+authors = ["repkg-rs contributors"]
+description = "Wallpaper Engine PKG unpacker and TEX converter"
+
+[workspace.dependencies]
+thiserror = "1.0"
+bitflags = "2.4"
+byteorder = "1.5"

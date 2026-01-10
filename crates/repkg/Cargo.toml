@@ -1,0 +1,31 @@
+[package]
+name = "repkg"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Library for reading Wallpaper Engine PKG and TEX files"
+
+[dependencies]
+repkg-core = { path = "../repkg-core" }
+
+# Binary parsing
+byteorder.workspace = true
+
+# Compression
+lz4_flex = "0.11"
+
+# DXT decompression (pure Rust, cross-platform)
+texture2ddecoder = "0.0.5"
+
+# Image processing
+image = { version = "0.25", default-features = false, features = [
+    "png", "jpeg", "gif", "webp", "bmp", "tiff", "tga"
+]}
+
+# Error handling
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3.10"
+serde_json = "1.0"
+image = "0.25"
