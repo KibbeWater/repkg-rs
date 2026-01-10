@@ -23,7 +23,7 @@ This is a cross-platform rewrite of [notscuffed/repkg](https://github.com/notscu
 ### From source
 
 ```bash
-git clone https://github.com/user/repkg-rs
+git clone https://github.com/KibbeWater/repkg-rs
 cd repkg-rs
 cargo build --release
 ```
