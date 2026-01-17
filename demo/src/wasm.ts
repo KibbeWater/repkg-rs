@@ -33,6 +33,13 @@ export interface ConvertResult {
   data: Uint8Array;
   format: string;
   mime_type: string;
+  take_data(): Uint8Array;
+}
+
+export interface VideoDataInfo {
+  is_video: boolean;
+  data_offset: number;
+  data_size: number;
 }
 
 export interface WasmModule {
@@ -43,6 +50,7 @@ export interface WasmModule {
   parse_tex(bytes: Uint8Array): TexInfo;
   convert_tex(bytes: Uint8Array, format: string): Uint8Array;
   convert_tex_auto(bytes: Uint8Array): ConvertResult;
+  get_video_data_location(bytes: Uint8Array): VideoDataInfo;
 }
 
 let wasmModule: WasmModule | null = null;

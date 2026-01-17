@@ -1,3 +1,87 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-gray-100 antialiased;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+}
+
+@layer components {
+  /* Glass morphism card style */
+  .glass-card {
+    @apply bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl;
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent;
+  }
+  
+  /* Primary button with glow */
+  .btn-primary {
+    @apply relative px-6 py-2.5 rounded-xl font-semibold transition-all duration-300;
+    @apply bg-gradient-to-r from-violet-600 to-violet-500;
+    @apply hover:from-violet-500 hover:to-fuchsia-500;
+    @apply shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:shadow-xl;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:from-violet-600 disabled:hover:to-violet-500;
+    @apply active:scale-[0.98];
+  }
+  
+  /* Secondary button */
+  .btn-secondary {
+    @apply bg-slate-800/80 hover:bg-slate-700 border border-white/10 hover:border-violet-500/30;
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200;
+  }
+  
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-violet-500/10 text-violet-400 border border-violet-500/20;
+  }
+  
+  .badge-pink {
+    @apply bg-pink-500/10 text-pink-400 border border-pink-500/20;
+  }
+  
+  /* Input styling */
+  .select {
+    @apply bg-slate-800/80 rounded-xl px-4 py-2.5 text-sm;
+    @apply border border-white/10 outline-none;
+    @apply focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20;
+    @apply transition-all duration-200;
+  }
+  
+  /* Checkbox styling */
+  input[type="checkbox"] {
+    @apply w-4 h-4 rounded border-white/20 bg-slate-800;
+    @apply text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900;
+    @apply cursor-pointer;
+  }
+  
+  /* Link styling */
+  .link {
+    @apply text-violet-400 hover:text-violet-300 transition-colors;
+    @apply underline decoration-violet-400/30 hover:decoration-violet-400/60 underline-offset-2;
+  }
+}

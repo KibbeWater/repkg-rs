@@ -30,7 +30,6 @@ export function TexViewer({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
 
-  // Generate preview on mount
   useEffect(() => {
     let cancelled = false;
 
@@ -81,7 +80,6 @@ export function TexViewer({
     }
   }, [bytes, wasm, outputFormat, fileName, onProgress, onComplete, onError]);
 
-  // Determine available formats based on texture type
   const availableFormats = texInfo.is_video
     ? [{ value: 'mp4', label: 'MP4' }]
     : [
@@ -94,63 +92,89 @@ export function TexViewer({
       ];
 
   return (
-    <div className="mt-8">
-      <div className="bg-gray-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-4">Texture Preview</h2>
+    <div className="mt-8 animate-fade-in">
+      <div className="glass-card p-6">
+        <h2 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
+          <svg className="w-5 h-5 text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Texture Preview
+        </h2>
 
         {/* Preview */}
-        <div className="mb-4 bg-gray-900 rounded-lg p-4 flex justify-center items-center min-h-48">
+        <div className="mb-4 bg-slate-950/50 rounded-xl p-4 flex justify-center items-center min-h-48 border border-white/5">
           {previewUrl ? (
             texInfo.is_video ? (
               <video
                 src={previewUrl}
                 controls
-                className="max-w-full max-h-96"
+                className="max-w-full max-h-96 rounded-lg"
               />
             ) : (
               <img
                 src={previewUrl}
                 alt="Texture preview"
-                className="max-w-full max-h-96 object-contain"
+                className="max-w-full max-h-96 object-contain rounded-lg"
               />
             )
           ) : (
-            <div className="text-gray-500">Generating preview...</div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Generating preview...
+            </div>
           )}
         </div>
 
-        {/* Info */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-          <div className="bg-gray-900 rounded-lg p-3">
-            <div className="text-gray-400 text-xs">Dimensions</div>
-            <div className="font-medium">
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
+            <div className="text-slate-500 text-xs mb-1">Dimensions</div>
+            <div className="font-semibold text-white">
               {texInfo.width} x {texInfo.height}
             </div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-3">
-            <div className="text-gray-400 text-xs">Format</div>
-            <div className="font-medium">{texInfo.format}</div>
+          <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
+            <div className="text-slate-500 text-xs mb-1">Format</div>
+            <div className="font-semibold text-white">{texInfo.format}</div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-3">
-            <div className="text-gray-400 text-xs">Type</div>
-            <div className="font-medium">
-              {texInfo.is_video ? 'Video' : texInfo.is_gif ? 'Animation' : 'Static'}
+          <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
+            <div className="text-slate-500 text-xs mb-1">Type</div>
+            <div className="font-semibold text-white">
+              {texInfo.is_video ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-pink-500"></span>
+                  Video
+                </span>
+              ) : texInfo.is_gif ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-fuchsia-500"></span>
+                  Animation
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                  Static
+                </span>
+              )}
             </div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-3">
-            <div className="text-gray-400 text-xs">Mipmaps</div>
-            <div className="font-medium">{texInfo.mipmap_count}</div>
+          <div className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
+            <div className="text-slate-500 text-xs mb-1">Mipmaps</div>
+            <div className="font-semibold text-white">{texInfo.mipmap_count}</div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-4 items-center pt-2 border-t border-white/5">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-400">Format:</label>
+            <label className="text-sm text-slate-400">Format:</label>
             <select
               value={outputFormat}
               onChange={(e) => setOutputFormat(e.target.value)}
-              className="bg-gray-700 rounded px-3 py-1 text-sm border-none focus:ring-2 focus:ring-blue-500"
+              className="select"
               disabled={texInfo.is_video}
             >
               {availableFormats.map((fmt) => (
@@ -163,7 +187,7 @@ export function TexViewer({
           <button
             onClick={handleDownload}
             disabled={isConverting}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-2 rounded-lg font-medium transition-colors"
+            className="btn-primary"
           >
             {isConverting ? 'Converting...' : 'Download'}
           </button>
