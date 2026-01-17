@@ -124,12 +124,7 @@ impl TexFrameInfo {
         let x = self.x.min(self.x + width);
         let y = self.y.min(self.y + height);
 
-        (
-            x as u32,
-            y as u32,
-            width.abs() as u32,
-            height.abs() as u32,
-        )
+        (x as u32, y as u32, width.abs() as u32, height.abs() as u32)
     }
 
     /// Get frame delay in centiseconds (for GIF format).

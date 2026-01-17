@@ -34,7 +34,11 @@ fn test_read_pkg_file() {
     assert_eq!(package.entries.len(), 18);
 
     // Check for expected files
-    let entry_paths: Vec<&str> = package.entries.iter().map(|e| e.full_path.as_str()).collect();
+    let entry_paths: Vec<&str> = package
+        .entries
+        .iter()
+        .map(|e| e.full_path.as_str())
+        .collect();
 
     assert!(entry_paths.contains(&"scene.json"));
     assert!(entry_paths.contains(&"materials/Reze poster.tex"));
@@ -101,10 +105,7 @@ fn test_pkg_extract_entry() {
         .find(|e| e.full_path == "scene.json")
         .expect("scene.json not found");
 
-    let entry_bytes = scene_entry
-        .bytes
-        .as_ref()
-        .expect("Entry bytes not loaded");
+    let entry_bytes = scene_entry.bytes.as_ref().expect("Entry bytes not loaded");
 
     // Verify it's valid JSON
     let json_str = String::from_utf8(entry_bytes.clone()).expect("Invalid UTF-8");

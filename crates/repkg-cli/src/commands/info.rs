@@ -183,13 +183,32 @@ fn print_pkg_info(pkg: &Package, path: &Path, args: &InfoArgs, quiet: bool) {
     println!("  Magic: {}", pkg.magic.yellow());
     println!("  Header size: {} bytes", pkg.header_size);
     println!("  Entry count: {}", pkg.entry_count());
-    println!("  Total data size: {} bytes", format_size(pkg.total_data_size()));
+    println!(
+        "  Total data size: {} bytes",
+        format_size(pkg.total_data_size())
+    );
 
     // Count entries by type
-    let tex_count = pkg.entries.iter().filter(|e| e.entry_type == EntryType::Tex).count();
-    let json_count = pkg.entries.iter().filter(|e| e.entry_type == EntryType::Json).count();
-    let shader_count = pkg.entries.iter().filter(|e| e.entry_type == EntryType::Shader).count();
-    let other_count = pkg.entries.iter().filter(|e| e.entry_type == EntryType::Other).count();
+    let tex_count = pkg
+        .entries
+        .iter()
+        .filter(|e| e.entry_type == EntryType::Tex)
+        .count();
+    let json_count = pkg
+        .entries
+        .iter()
+        .filter(|e| e.entry_type == EntryType::Json)
+        .count();
+    let shader_count = pkg
+        .entries
+        .iter()
+        .filter(|e| e.entry_type == EntryType::Shader)
+        .count();
+    let other_count = pkg
+        .entries
+        .iter()
+        .filter(|e| e.entry_type == EntryType::Other)
+        .count();
 
     println!("  Entry types:");
     if tex_count > 0 {
@@ -245,10 +264,7 @@ fn print_tex_info(tex: &Tex, path: &Path, quiet: bool) {
         "  Image size: {}x{}",
         tex.header.image_width, tex.header.image_height
     );
-    println!(
-        "  Container version: {:?}",
-        tex.images_container.version
-    );
+    println!("  Container version: {:?}", tex.images_container.version);
     println!("  Image format: {:?}", tex.images_container.image_format);
     println!("  Image count: {}", tex.image_count());
 
@@ -260,10 +276,7 @@ fn print_tex_info(tex: &Tex, path: &Path, quiet: bool) {
                 frame_info.gif_width, frame_info.gif_height
             );
             println!("  Frame count: {}", frame_info.frame_count());
-            println!(
-                "  Total duration: {:.2}s",
-                frame_info.total_duration()
-            );
+            println!("  Total duration: {:.2}s", frame_info.total_duration());
         }
     } else if tex.is_video() {
         println!("  Type: {} (video)", "MP4".blue());

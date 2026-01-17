@@ -13,7 +13,6 @@ use crate::error::{Error, Result};
 /// Safety limits.
 const MAX_IMAGE_COUNT: u32 = 1000;
 const MAX_MIPMAP_COUNT: u32 = 20;
-const MAX_MIPMAP_SIZE: u32 = 512 * 1024 * 1024; // 512 MB
 const MAX_FRAME_COUNT: u32 = 10000;
 
 /// Reader for Wallpaper Engine TEX files.
@@ -23,6 +22,13 @@ pub struct TexReader {
     pub read_mipmap_bytes: bool,
     /// Whether to decompress mipmaps after reading
     pub decompress_mipmaps: bool,
+}
+
+/// Result of reading mipmap bytes - includes metadata even when bytes aren't read.
+struct MipmapBytesResult {
+    bytes: Vec<u8>,
+    byte_count: u32,
+    file_offset: u64,
 }
 
 impl TexReader {
@@ -38,6 +44,15 @@ impl TexReader {
     pub fn without_decompression() -> Self {
         Self {
             read_mipmap_bytes: true,
+            decompress_mipmaps: false,
+        }
+    }
+
+    /// Create a reader that only reads headers, not mipmap data.
+    /// Useful for getting texture info without loading large data into memory.
+    pub fn headers_only() -> Self {
+        Self {
+            read_mipmap_bytes: false,
             decompress_mipmaps: false,
         }
     }
@@ -105,6 +120,16 @@ impl TexReader {
     }
 
     /// Read the image container.
+    ///
+    /// Container structure (based on C# reference implementation):
+    /// - magic (null-terminated string, e.g., "TEXB0004\0")
+    /// - imageCount (i32) - ALWAYS first field after magic
+    /// - [V3+]: imageFormat (i32)
+    /// - [V4 only]: isVideoMp4 (i32) - 1 if video, 0 otherwise
+    ///
+    /// Then for each image (loop imageCount times):
+    /// - mipmapCount (i32)
+    /// - [mipmaps...]
     fn read_image_container<R: Read + Seek>(
         &self,
         reader: &mut R,
@@ -112,7 +137,7 @@ impl TexReader {
     ) -> Result<TexImageContainer> {
         // Read container magic
         let container_magic = read_null_terminated_string(reader, 16)?;
-        let version = TexImageContainerVersion::from_magic(&container_magic);
+        let mut version = TexImageContainerVersion::from_magic(&container_magic);
 
         if !version.is_supported() {
             return Err(Error::UnsupportedContainerVersion {
@@ -120,42 +145,51 @@ impl TexReader {
             });
         }
 
-        // Read first field (may be a flag or image format depending on version)
-        let first_field = reader.read_i32::<LittleEndian>()?;
-        
-        // For Version 3+, read additional fields
-        // The structure appears to be: flag(4) + image_format(4) + mipmap_count(4)
-        // where mipmap_count is for a single implicit image
-        let (image_format, mipmap_count) = if matches!(
-            version,
-            TexImageContainerVersion::Version3 | TexImageContainerVersion::Version4
-        ) {
-            let second_field = reader.read_i32::<LittleEndian>()?;
-            let third_field = reader.read_u32::<LittleEndian>()?;
-            
-            // The second field is likely the actual FreeImageFormat
-            // (13 = PNG, etc.), while first_field is a flag
-            let fmt = if (0..=36).contains(&second_field) {
-                FreeImageFormat::from(second_field)
-            } else {
-                FreeImageFormat::from(first_field)
-            };
-            
-            (fmt, third_field)
-        } else {
-            // For older versions, first_field is image_format
-            let image_count = reader.read_u32::<LittleEndian>()?;
-            (FreeImageFormat::from(first_field), image_count)
-        };
-
-        if mipmap_count > MAX_IMAGE_COUNT {
+        // First field is ALWAYS imageCount (for all versions)
+        let image_count = reader.read_i32::<LittleEndian>()?;
+        if image_count < 0 || image_count as u32 > MAX_IMAGE_COUNT {
             return Err(Error::safety_limit(format!(
-                "Mipmap count {} exceeds maximum {}",
-                mipmap_count, MAX_IMAGE_COUNT
+                "Image count {} exceeds maximum {}",
+                image_count, MAX_IMAGE_COUNT
             )));
         }
 
-        // Determine mipmap format
+        // Read additional fields based on version
+        let image_format = match &version {
+            TexImageContainerVersion::Version1 | TexImageContainerVersion::Version2 => {
+                // V1/V2: No additional fields
+                FreeImageFormat::Unknown
+            }
+            TexImageContainerVersion::Version3 => {
+                // V3: imageFormat field
+                FreeImageFormat::from(reader.read_i32::<LittleEndian>()?)
+            }
+            TexImageContainerVersion::Version4 => {
+                // V4: imageFormat + isVideoMp4 fields
+                let format = FreeImageFormat::from(reader.read_i32::<LittleEndian>()?);
+                let is_video_mp4 = reader.read_i32::<LittleEndian>()? == 1;
+
+                // If format is Unknown and isVideoMp4 flag is set, treat as MP4
+                if format == FreeImageFormat::Unknown && is_video_mp4 {
+                    FreeImageFormat::Mp4
+                } else {
+                    format
+                }
+            }
+            TexImageContainerVersion::Unknown(_) => {
+                return Err(Error::UnsupportedContainerVersion {
+                    version: container_magic,
+                });
+            }
+        };
+
+        // KEY: Downgrade V4 to V3 when format is not MP4
+        // This matches the C# behavior where V4 containers without MP4 format
+        // use V3-style mipmap reading (no extra V4 parameters)
+        if version == TexImageContainerVersion::Version4 && image_format != FreeImageFormat::Mp4 {
+            version = TexImageContainerVersion::Version3;
+        }
+
         let mut container = TexImageContainer {
             version: version.clone(),
             image_format,
@@ -163,51 +197,13 @@ impl TexReader {
         };
         let mipmap_format = container.mipmap_format(tex_format);
 
-        // For Version 3 with embedded image formats, treat mipmap_count as the number
-        // of mipmaps in a single image (no per-image mipmap count in the file)
-        if matches!(
-            version,
-            TexImageContainerVersion::Version3 | TexImageContainerVersion::Version4
-        ) {
-            let image = self.read_image_direct_mipmaps(reader, &version, mipmap_format, mipmap_count)?;
+        // Read images - ALL versions use per-image mipmap count
+        for _ in 0..image_count {
+            let image = self.read_image(reader, &version, mipmap_format)?;
             container.images.push(image);
-        } else {
-            // For older versions, read images with per-image mipmap count
-            for _ in 0..mipmap_count {
-                let image = self.read_image(reader, &version, mipmap_format)?;
-                container.images.push(image);
-            }
         }
 
         Ok(container)
-    }
-
-    /// Read an image where mipmap count is provided externally (V3+ format).
-    fn read_image_direct_mipmaps<R: Read + Seek>(
-        &self,
-        reader: &mut R,
-        version: &TexImageContainerVersion,
-        mipmap_format: MipmapFormat,
-        mipmap_count: u32,
-    ) -> Result<TexImage> {
-        let mut image = TexImage {
-            mipmaps: Vec::with_capacity(mipmap_count as usize),
-        };
-
-        let decompressor = MipmapDecompressor::new();
-
-        for _ in 0..mipmap_count {
-            let mut mipmap = self.read_mipmap(reader, version)?;
-            mipmap.format = mipmap_format;
-
-            if self.decompress_mipmaps && mipmap.has_data() {
-                decompressor.decompress(&mut mipmap)?;
-            }
-
-            image.mipmaps.push(mipmap);
-        }
-
-        Ok(image)
     }
 
     /// Read a single image with its mipmaps.
@@ -264,10 +260,10 @@ impl TexReader {
     }
 
     /// Read a V1 mipmap.
-    fn read_mipmap_v1<R: Read>(&self, reader: &mut R) -> Result<TexMipmap> {
+    fn read_mipmap_v1<R: Read + Seek>(&self, reader: &mut R) -> Result<TexMipmap> {
         let width = reader.read_u32::<LittleEndian>()?;
         let height = reader.read_u32::<LittleEndian>()?;
-        let bytes = self.read_mipmap_bytes(reader)?;
+        let result = self.read_mipmap_bytes(reader)?;
 
         Ok(TexMipmap {
             width,
@@ -275,17 +271,19 @@ impl TexReader {
             format: MipmapFormat::Invalid,
             is_lz4_compressed: false,
             decompressed_bytes_count: 0,
-            bytes,
+            bytes: result.bytes,
+            original_byte_count: result.byte_count,
+            file_offset: result.file_offset,
         })
     }
 
     /// Read a V2/V3 mipmap.
-    fn read_mipmap_v2_v3<R: Read>(&self, reader: &mut R) -> Result<TexMipmap> {
+    fn read_mipmap_v2_v3<R: Read + Seek>(&self, reader: &mut R) -> Result<TexMipmap> {
         let width = reader.read_u32::<LittleEndian>()?;
         let height = reader.read_u32::<LittleEndian>()?;
         let is_lz4_compressed = reader.read_u32::<LittleEndian>()? == 1;
         let decompressed_bytes_count = reader.read_u32::<LittleEndian>()?;
-        let bytes = self.read_mipmap_bytes(reader)?;
+        let result = self.read_mipmap_bytes(reader)?;
 
         Ok(TexMipmap {
             width,
@@ -293,12 +291,14 @@ impl TexReader {
             format: MipmapFormat::Invalid,
             is_lz4_compressed,
             decompressed_bytes_count,
-            bytes,
+            bytes: result.bytes,
+            original_byte_count: result.byte_count,
+            file_offset: result.file_offset,
         })
     }
 
     /// Read a V4 mipmap (has extra parameters).
-    fn read_mipmap_v4<R: Read>(&self, reader: &mut R) -> Result<TexMipmap> {
+    fn read_mipmap_v4<R: Read + Seek>(&self, reader: &mut R) -> Result<TexMipmap> {
         // V4 has some extra parameters we skip
         let _param1 = reader.read_u32::<LittleEndian>()?;
         let _param2 = reader.read_u32::<LittleEndian>()?;
@@ -310,31 +310,41 @@ impl TexReader {
     }
 
     /// Read mipmap bytes with length prefix.
-    fn read_mipmap_bytes<R: Read>(&self, reader: &mut R) -> Result<Vec<u8>> {
+    /// Validates that byte_count doesn't exceed remaining stream length (like C# version).
+    fn read_mipmap_bytes<R: Read + Seek>(&self, reader: &mut R) -> Result<MipmapBytesResult> {
         let byte_count = reader.read_u32::<LittleEndian>()?;
 
-        if byte_count > MAX_MIPMAP_SIZE {
+        // Record the offset where data starts
+        let file_offset = reader.stream_position()?;
+
+        // Validate against stream length (matches C# behavior)
+        let stream_len = reader.seek(std::io::SeekFrom::End(0))?;
+        reader.seek(std::io::SeekFrom::Start(file_offset))?;
+
+        if file_offset + byte_count as u64 > stream_len {
             return Err(Error::safety_limit(format!(
-                "Mipmap size {} exceeds maximum {}",
-                byte_count, MAX_MIPMAP_SIZE
+                "Mipmap byte count {} exceeds remaining stream length (pos: {}, len: {})",
+                byte_count, file_offset, stream_len
             )));
         }
 
         if !self.read_mipmap_bytes {
-            // Skip the bytes
-            let mut remaining = byte_count as usize;
-            let mut buf = [0u8; 8192];
-            while remaining > 0 {
-                let to_read = remaining.min(buf.len());
-                reader.read_exact(&mut buf[..to_read])?;
-                remaining -= to_read;
-            }
-            return Ok(Vec::new());
+            // Skip the bytes but record metadata
+            reader.seek(std::io::SeekFrom::Current(byte_count as i64))?;
+            return Ok(MipmapBytesResult {
+                bytes: Vec::new(),
+                byte_count,
+                file_offset,
+            });
         }
 
         let mut bytes = vec![0u8; byte_count as usize];
         reader.read_exact(&mut bytes)?;
-        Ok(bytes)
+        Ok(MipmapBytesResult {
+            bytes,
+            byte_count,
+            file_offset,
+        })
     }
 
     /// Read frame info container for animated textures.

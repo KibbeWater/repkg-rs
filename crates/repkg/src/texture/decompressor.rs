@@ -37,13 +37,12 @@ impl MipmapDecompressor {
             return Ok(());
         }
 
-        let decompressed = lz4_flex::decompress(
-            &mipmap.bytes,
-            mipmap.decompressed_bytes_count as usize,
-        )
-        .map_err(|e| Error::Lz4Decompression {
-            message: e.to_string(),
-        })?;
+        let decompressed =
+            lz4_flex::decompress(&mipmap.bytes, mipmap.decompressed_bytes_count as usize).map_err(
+                |e| Error::Lz4Decompression {
+                    message: e.to_string(),
+                },
+            )?;
 
         mipmap.bytes = decompressed;
         mipmap.is_lz4_compressed = false;
@@ -56,32 +55,33 @@ impl MipmapDecompressor {
         let height = mipmap.height as usize;
         let pixel_count = width * height;
 
-        let rgba = match mipmap.format {
-            MipmapFormat::CompressedDXT1 => {
-                let mut output = vec![0u32; pixel_count];
-                texture2ddecoder::decode_bc1(&mipmap.bytes, width, height, &mut output)
-                    .map_err(|e| Error::DxtDecompression {
-                        details: format!("DXT1/BC1 decompression failed: {}", e),
-                    })?;
-                u32_to_rgba_bytes(output)
-            }
-            MipmapFormat::CompressedDXT3 => {
-                // BC2 is DXT3 - texture2ddecoder doesn't have decode_bc2
-                // DXT3 is rare in Wallpaper Engine, return error for now
-                return Err(Error::DxtDecompression {
-                    details: "DXT3/BC2 decompression not yet supported".to_string(),
-                });
-            }
-            MipmapFormat::CompressedDXT5 => {
-                let mut output = vec![0u32; pixel_count];
-                texture2ddecoder::decode_bc3(&mipmap.bytes, width, height, &mut output)
-                    .map_err(|e| Error::DxtDecompression {
-                        details: format!("DXT5/BC3 decompression failed: {}", e),
-                    })?;
-                u32_to_rgba_bytes(output)
-            }
-            _ => return Ok(()), // Not a compressed format
-        };
+        let rgba =
+            match mipmap.format {
+                MipmapFormat::CompressedDXT1 => {
+                    let mut output = vec![0u32; pixel_count];
+                    texture2ddecoder::decode_bc1(&mipmap.bytes, width, height, &mut output)
+                        .map_err(|e| Error::DxtDecompression {
+                            details: format!("DXT1/BC1 decompression failed: {}", e),
+                        })?;
+                    u32_to_rgba_bytes(output)
+                }
+                MipmapFormat::CompressedDXT3 => {
+                    // BC2 is DXT3 - texture2ddecoder doesn't have decode_bc2
+                    // DXT3 is rare in Wallpaper Engine, return error for now
+                    return Err(Error::DxtDecompression {
+                        details: "DXT3/BC2 decompression not yet supported".to_string(),
+                    });
+                }
+                MipmapFormat::CompressedDXT5 => {
+                    let mut output = vec![0u32; pixel_count];
+                    texture2ddecoder::decode_bc3(&mipmap.bytes, width, height, &mut output)
+                        .map_err(|e| Error::DxtDecompression {
+                            details: format!("DXT5/BC3 decompression failed: {}", e),
+                        })?;
+                    u32_to_rgba_bytes(output)
+                }
+                _ => return Ok(()), // Not a compressed format
+            };
 
         mipmap.bytes = rgba;
         mipmap.format = MipmapFormat::RGBA8888;
@@ -94,8 +94,8 @@ fn u32_to_rgba_bytes(pixels: Vec<u32>) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(pixels.len() * 4);
     for pixel in pixels {
         // texture2ddecoder returns RGBA as u32 in native endian
-        bytes.push((pixel & 0xFF) as u8);         // R
-        bytes.push(((pixel >> 8) & 0xFF) as u8);  // G
+        bytes.push((pixel & 0xFF) as u8); // R
+        bytes.push(((pixel >> 8) & 0xFF) as u8); // G
         bytes.push(((pixel >> 16) & 0xFF) as u8); // B
         bytes.push(((pixel >> 24) & 0xFF) as u8); // A
     }
@@ -128,6 +128,8 @@ mod tests {
             is_lz4_compressed: false,
             decompressed_bytes_count: 0,
             bytes: vec![0u8; 64],
+            original_byte_count: 64,
+            file_offset: 0,
         };
 
         // Should succeed without modifying anything

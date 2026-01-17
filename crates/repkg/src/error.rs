@@ -27,7 +27,10 @@ pub enum Error {
 
     /// Invalid TEX magic header.
     #[error("Invalid TEX magic: expected '{expected}', got '{found}'")]
-    InvalidTexMagic { expected: &'static str, found: String },
+    InvalidTexMagic {
+        expected: &'static str,
+        found: String,
+    },
 
     /// Unsupported TEX container version.
     #[error("Unsupported TEX container version: {version}")]
@@ -35,9 +38,7 @@ pub enum Error {
 
     /// Unsupported mipmap format.
     #[error("Unsupported mipmap format: {format:?}")]
-    UnsupportedMipmapFormat {
-        format: repkg_core::MipmapFormat,
-    },
+    UnsupportedMipmapFormat { format: repkg_core::MipmapFormat },
 
     /// LZ4 decompression failed.
     #[error("LZ4 decompression failed: {message}")]
@@ -72,27 +73,23 @@ impl Error {
     /// Get a helpful suggestion for recovering from this error.
     pub fn suggestion(&self) -> Option<&'static str> {
         match self {
-            Error::InvalidPkgMagic { .. } => {
-                Some("This file may not be a valid PKG file. Verify it comes from Wallpaper Engine.")
-            }
-            Error::InvalidTexMagic { .. } => {
-                Some("This file may not be a valid TEX file. Use --no-convert to extract raw files.")
-            }
+            Error::InvalidPkgMagic { .. } => Some(
+                "This file may not be a valid PKG file. Verify it comes from Wallpaper Engine.",
+            ),
+            Error::InvalidTexMagic { .. } => Some(
+                "This file may not be a valid TEX file. Use --no-convert to extract raw files.",
+            ),
             Error::UnsupportedContainerVersion { .. } => {
                 Some("This file uses a newer format version. Please report this issue on GitHub.")
             }
             Error::UnsupportedMipmapFormat { .. } => {
                 Some("Try using --format png or --no-convert to extract raw data.")
             }
-            Error::Lz4Decompression { .. } | Error::DxtDecompression { .. } => {
-                Some("The file may be corrupted. Try re-downloading from Wallpaper Engine workshop.")
-            }
-            Error::ImageConversion(_) => {
-                Some("Try a different output format with --format.")
-            }
-            Error::SafetyLimit { .. } => {
-                Some("The file may be corrupted or malicious.")
-            }
+            Error::Lz4Decompression { .. } | Error::DxtDecompression { .. } => Some(
+                "The file may be corrupted. Try re-downloading from Wallpaper Engine workshop.",
+            ),
+            Error::ImageConversion(_) => Some("Try a different output format with --format."),
+            Error::SafetyLimit { .. } => Some("The file may be corrupted or malicious."),
             _ => None,
         }
     }

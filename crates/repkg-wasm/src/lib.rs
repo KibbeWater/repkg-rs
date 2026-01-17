@@ -127,23 +127,42 @@ pub fn parse_pkg(bytes: &[u8]) -> Result<JsValue, JsError> {
     // Log parsing details
     #[cfg(feature = "console-log")]
     {
-        let texture_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Tex)).count();
-        let json_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Json)).count();
-        let shader_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Shader)).count();
-        let other_count = package.entries.iter().filter(|e| matches!(e.entry_type, repkg_core::EntryType::Other)).count();
+        let texture_count = package
+            .entries
+            .iter()
+            .filter(|e| matches!(e.entry_type, repkg_core::EntryType::Tex))
+            .count();
+        let json_count = package
+            .entries
+            .iter()
+            .filter(|e| matches!(e.entry_type, repkg_core::EntryType::Json))
+            .count();
+        let shader_count = package
+            .entries
+            .iter()
+            .filter(|e| matches!(e.entry_type, repkg_core::EntryType::Shader))
+            .count();
+        let other_count = package
+            .entries
+            .iter()
+            .filter(|e| matches!(e.entry_type, repkg_core::EntryType::Other))
+            .count();
         let total_data: u64 = package.entries.iter().map(|e| e.length as u64).sum();
 
-        wasm_info!("pkg_parse", &PkgParseLog {
-            magic: package.magic.clone(),
-            version: package.magic.chars().skip(4).collect(),
-            header_size_bytes: package.header_size,
-            entry_count: package.entries.len(),
-            total_data_bytes: total_data,
-            texture_count,
-            json_count,
-            shader_count,
-            other_count,
-        });
+        wasm_info!(
+            "pkg_parse",
+            &PkgParseLog {
+                magic: package.magic.clone(),
+                version: package.magic.chars().skip(4).collect(),
+                header_size_bytes: package.header_size,
+                entry_count: package.entries.len(),
+                total_data_bytes: total_data,
+                texture_count,
+                json_count,
+                shader_count,
+                other_count,
+            }
+        );
     }
 
     let info = pkg_to_info(&package);
@@ -218,10 +237,13 @@ pub fn extract_selected_pkg(bytes: &[u8], paths: Vec<String>) -> Result<JsValue,
     #[cfg(feature = "console-log")]
     {
         let total_bytes: usize = files.iter().map(|f| f.data.len()).sum();
-        wasm_info!("pkg_extract", &ExtractLog {
-            entry_count: files.len(),
-            total_bytes,
-        });
+        wasm_info!(
+            "pkg_extract",
+            &ExtractLog {
+                entry_count: files.len(),
+                total_bytes,
+            }
+        );
     }
 
     serde_wasm_bindgen::to_value(&files).map_err(|e| JsError::new(&e.to_string()))
@@ -243,25 +265,33 @@ pub fn parse_tex(bytes: &[u8]) -> Result<JsValue, JsError> {
     #[cfg(feature = "console-log")]
     {
         let mipmap_count = tex.first_image().map(|i| i.mipmap_count()).unwrap_or(0);
-        let total_mipmap_bytes: usize = tex.first_image()
+        let total_mipmap_bytes: usize = tex
+            .first_image()
             .map(|img| img.mipmaps.iter().map(|m| m.bytes.len()).sum())
             .unwrap_or(0);
-        let is_lz4 = tex.first_image()
+        let is_lz4 = tex
+            .first_image()
             .and_then(|img| img.mipmaps.first())
             .map(|m| m.is_lz4_compressed)
             .unwrap_or(false);
 
-        wasm_info!("tex_parse", &TexParseLog {
-            container_version: format!("{:?}", tex.images_container.version),
-            format: format!("{:?}", tex.header.format),
-            flags: tex.header.flags.bits(),
-            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
-            texture_dimensions: format!("{}x{}", tex.header.texture_width, tex.header.texture_height),
-            image_format: format!("{:?}", tex.images_container.image_format),
-            is_lz4_compressed: is_lz4,
-            mipmap_count,
-            total_mipmap_bytes,
-        });
+        wasm_info!(
+            "tex_parse",
+            &TexParseLog {
+                container_version: format!("{:?}", tex.images_container.version),
+                format: format!("{:?}", tex.header.format),
+                flags: tex.header.flags.bits(),
+                dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+                texture_dimensions: format!(
+                    "{}x{}",
+                    tex.header.texture_width, tex.header.texture_height
+                ),
+                image_format: format!("{:?}", tex.images_container.image_format),
+                is_lz4_compressed: is_lz4,
+                mipmap_count,
+                total_mipmap_bytes,
+            }
+        );
     }
 
     let info = tex_to_info(&tex);
@@ -292,17 +322,67 @@ pub fn convert_tex(bytes: &[u8], format: &str) -> Result<Vec<u8>, JsError> {
     #[cfg(feature = "console-log")]
     {
         let output_len = result.bytes.len();
-        wasm_info!("tex_convert", &TexConvertLog {
-            input_format: format!("{:?}", tex.header.format),
-            output_format: format.to_uppercase(),
-            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
-            input_bytes: input_len,
-            output_bytes: output_len,
-            compression_ratio: if input_len > 0 { output_len as f32 / input_len as f32 } else { 0.0 },
-        });
+        wasm_info!(
+            "tex_convert",
+            &TexConvertLog {
+                input_format: format!("{:?}", tex.header.format),
+                output_format: format.to_uppercase(),
+                dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+                input_bytes: input_len,
+                output_bytes: output_len,
+                compression_ratio: if input_len > 0 {
+                    output_len as f32 / input_len as f32
+                } else {
+                    0.0
+                },
+            }
+        );
     }
 
     Ok(result.bytes)
+}
+
+/// Video data location info for zero-copy extraction.
+#[derive(Serialize)]
+pub struct VideoDataInfo {
+    pub is_video: bool,
+    pub data_offset: u64,
+    pub data_size: u32,
+}
+
+/// Get video data location from a TEX file without reading the actual video bytes.
+/// Returns { is_video: bool, data_offset: number, data_size: number }.
+/// If is_video is true, you can use bytes.slice(data_offset, data_offset + data_size)
+/// to get the MP4 data directly without WASM memory overhead.
+#[wasm_bindgen]
+pub fn get_video_data_location(bytes: &[u8]) -> Result<JsValue, JsError> {
+    // Create a reader that only reads headers, not mipmap data
+    let reader = TexReader::headers_only();
+    let tex = reader
+        .read_from(&mut Cursor::new(bytes))
+        .map_err(|e| JsError::new(&e.to_string()))?;
+
+    if !tex.is_video() {
+        let info = VideoDataInfo {
+            is_video: false,
+            data_offset: 0,
+            data_size: 0,
+        };
+        return serde_wasm_bindgen::to_value(&info).map_err(|e| JsError::new(&e.to_string()));
+    }
+
+    // Get the video data location from the mipmap metadata
+    let mipmap = tex
+        .first_image()
+        .and_then(|img| img.first_mipmap())
+        .ok_or_else(|| JsError::new("Video texture has no data"))?;
+
+    let info = VideoDataInfo {
+        is_video: true,
+        data_offset: mipmap.file_offset,
+        data_size: mipmap.original_byte_count,
+    };
+    serde_wasm_bindgen::to_value(&info).map_err(|e| JsError::new(&e.to_string()))
 }
 
 /// Convert a TEX file to its recommended format (PNG for images, GIF for animations, MP4 for video).
@@ -327,14 +407,21 @@ pub fn convert_tex_auto(bytes: &[u8]) -> Result<ConvertResult, JsError> {
     #[cfg(feature = "console-log")]
     {
         let output_len = result.bytes.len();
-        wasm_info!("tex_convert_auto", &TexConvertLog {
-            input_format: format!("{:?}", tex.header.format),
-            output_format: result.format.extension().to_uppercase(),
-            dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
-            input_bytes: input_len,
-            output_bytes: output_len,
-            compression_ratio: if input_len > 0 { output_len as f32 / input_len as f32 } else { 0.0 },
-        });
+        wasm_info!(
+            "tex_convert_auto",
+            &TexConvertLog {
+                input_format: format!("{:?}", tex.header.format),
+                output_format: result.format.extension().to_uppercase(),
+                dimensions: format!("{}x{}", tex.header.image_width, tex.header.image_height),
+                input_bytes: input_len,
+                output_bytes: output_len,
+                compression_ratio: if input_len > 0 {
+                    output_len as f32 / input_len as f32
+                } else {
+                    0.0
+                },
+            }
+        );
     }
 
     Ok(ConvertResult {
@@ -354,10 +441,10 @@ pub struct ConvertResult {
 
 #[wasm_bindgen]
 impl ConvertResult {
-    /// Get the converted image data as bytes.
-    #[wasm_bindgen(getter)]
-    pub fn data(&self) -> Vec<u8> {
-        self.data.clone()
+    /// Take the converted image data as bytes (consumes the data).
+    /// This is more efficient than cloning for large files.
+    pub fn take_data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
     }
 
     /// Get the file extension (e.g., "png", "gif", "mp4").
@@ -403,10 +490,7 @@ fn entry_type_string(entry_type: &repkg_core::EntryType) -> String {
 }
 
 fn tex_to_info(tex: &Tex) -> TexInfo {
-    let mipmap_count = tex
-        .first_image()
-        .map(|img| img.mipmap_count())
-        .unwrap_or(0);
+    let mipmap_count = tex.first_image().map(|img| img.mipmap_count()).unwrap_or(0);
 
     TexInfo {
         width: tex.header.image_width,

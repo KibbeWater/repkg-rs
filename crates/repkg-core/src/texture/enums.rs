@@ -315,6 +315,8 @@ pub enum FreeImageFormat {
     WEBP = 35,
     /// JXR
     JXR = 36,
+    /// MP4 video (custom extension for Wallpaper Engine, not standard FreeImage)
+    Mp4 = 37,
 }
 
 impl From<i32> for FreeImageFormat {
@@ -375,8 +377,14 @@ impl FreeImageFormat {
             FreeImageFormat::DDS => MipmapFormat::ImageDDS,
             FreeImageFormat::TIFF => MipmapFormat::ImageTIFF,
             FreeImageFormat::WEBP => MipmapFormat::ImageWEBP,
+            FreeImageFormat::Mp4 => MipmapFormat::VideoMp4,
             _ => MipmapFormat::Invalid,
         }
+    }
+
+    /// Check if this format represents video content.
+    pub fn is_video(&self) -> bool {
+        matches!(self, FreeImageFormat::Mp4)
     }
 }
 

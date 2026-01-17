@@ -5,8 +5,8 @@ use clap::Args;
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
-use repkg::{PackageReader, TexReader, TexToImageConverter};
 use repkg::texture::OutputFormat;
+use repkg::{PackageReader, TexReader, TexToImageConverter};
 use repkg_core::EntryType;
 use std::fs::{self, File};
 use std::io::{BufReader, Cursor};
@@ -14,8 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
-
-
 
 /// Extract PKG files or convert TEX files to images
 #[derive(Args, Debug)]
@@ -353,7 +351,11 @@ fn extract_pkg(ctx: &ExtractContext, path: &Path) -> Result<()> {
         }
 
         if ctx.args.dry_run {
-            println!("  Would extract: {} -> {}", entry.full_path, output_path.display());
+            println!(
+                "  Would extract: {} -> {}",
+                entry.full_path,
+                output_path.display()
+            );
             continue;
         }
 
@@ -383,8 +385,7 @@ fn extract_pkg(ctx: &ExtractContext, path: &Path) -> Result<()> {
 
                     match converter.convert(&tex, format) {
                         Ok(result) => {
-                            let img_path =
-                                output_path.with_extension(result.format.extension());
+                            let img_path = output_path.with_extension(result.format.extension());
                             fs::write(&img_path, &result.bytes)?;
                             if ctx.verbose && !ctx.quiet {
                                 println!(
@@ -429,8 +430,7 @@ fn extract_tex(ctx: &ExtractContext, path: &Path) -> Result<()> {
         println!("\n{} Converting: {}", ">>>".cyan(), path.display());
     }
 
-    let bytes =
-        fs::read(path).with_context(|| format!("Failed to read {}", path.display()))?;
+    let bytes = fs::read(path).with_context(|| format!("Failed to read {}", path.display()))?;
 
     let tex_reader = TexReader::new();
     let tex = tex_reader
@@ -445,7 +445,10 @@ fn extract_tex(ctx: &ExtractContext, path: &Path) -> Result<()> {
     };
 
     // Determine output path
-    let file_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
+    let file_stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
     let output_path = ctx
         .args
         .output

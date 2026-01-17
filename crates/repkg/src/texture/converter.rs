@@ -424,9 +424,7 @@ impl TexToImageConverter {
                 image.write_to(&mut Cursor::new(&mut output), ImageFormat::Tga)?;
             }
             OutputFormat::Mp4 => {
-                return Err(Error::invalid_data(
-                    "Cannot encode static image as MP4",
-                ));
+                return Err(Error::invalid_data("Cannot encode static image as MP4"));
             }
         }
 

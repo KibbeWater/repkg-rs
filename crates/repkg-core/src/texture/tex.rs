@@ -211,6 +211,10 @@ pub struct TexMipmap {
     pub decompressed_bytes_count: u32,
     /// Raw byte data (may be compressed)
     pub bytes: Vec<u8>,
+    /// Original byte count in file (useful when bytes are not loaded)
+    pub original_byte_count: u32,
+    /// Byte offset in the original file where data starts
+    pub file_offset: u64,
 }
 
 impl TexMipmap {
@@ -223,6 +227,8 @@ impl TexMipmap {
             is_lz4_compressed: false,
             decompressed_bytes_count: 0,
             bytes: Vec::new(),
+            original_byte_count: 0,
+            file_offset: 0,
         }
     }
 
