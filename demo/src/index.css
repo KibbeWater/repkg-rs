@@ -85,3 +85,26 @@
     @apply underline decoration-violet-400/30 hover:decoration-violet-400/60 underline-offset-2;
   }
 }
+
+/* Animations */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-indeterminate {
+  animation: indeterminate 1.5s infinite ease-in-out;
+}

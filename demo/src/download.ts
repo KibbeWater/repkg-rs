@@ -61,3 +61,52 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+export interface ExtractedPkg {
+  filename: string;
+  data: Uint8Array;
+}
+
+/**
+ * Extract .pkg file from a ZIP archive
+ * Returns the first .pkg file found, or throws if none found
+ */
+export async function extractPkgFromZip(
+  zipBlob: Blob,
+  onProgress?: (message: string, percent: number) => void
+): Promise<ExtractedPkg> {
+  onProgress?.('Reading ZIP archive...', 10);
+  
+  const zip = await JSZip.loadAsync(zipBlob);
+  
+  // Find all .pkg files in the archive
+  const pkgFiles: string[] = [];
+  zip.forEach((relativePath, file) => {
+    if (!file.dir && relativePath.toLowerCase().endsWith('.pkg')) {
+      pkgFiles.push(relativePath);
+    }
+  });
+  
+  if (pkgFiles.length === 0) {
+    throw new Error('No .pkg file found in the downloaded archive');
+  }
+  
+  // Use the first .pkg file found (or prefer one at root level)
+  const pkgPath = pkgFiles.find(p => !p.includes('/')) || pkgFiles[0];
+  const pkgFile = zip.file(pkgPath);
+  
+  if (!pkgFile) {
+    throw new Error('Failed to read .pkg file from archive');
+  }
+  
+  onProgress?.('Extracting .pkg file...', 50);
+  
+  const data = await pkgFile.async('uint8array', (metadata) => {
+    onProgress?.('Extracting .pkg file...', 50 + Math.round(metadata.percent / 2));
+  });
+  
+  // Get just the filename from the path
+  const filename = pkgPath.split('/').pop() || pkgPath;
+  
+  return { filename, data };
+}
